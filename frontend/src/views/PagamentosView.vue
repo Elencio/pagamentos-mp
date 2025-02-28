@@ -3,7 +3,7 @@
     <h2>Lista de Pagamentos</h2>
 
 
-    <RouterLink to="/about">
+    <RouterLink to="/payment-form">
       <button class="btn-new" @click="goToNewPayment">
         Novo Pagamento
       </button>

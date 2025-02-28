@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import PagamentosView from '@/views/PagamentosView.vue'
+import PaymentDetailView from '@/views/PaymentDetailView.vue'
+import PaymentFormView from '@/views/PaymentFormView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -11,8 +13,13 @@ const router = createRouter({
     },
     {
       path: '/payment-form',
-      name: 'about',
-      component: () => import('../views/PaymentFormView.vue'),
+      name: 'payment-form',
+      component: PaymentFormView,
+    },
+    {
+      path: '/pagamentos/detalhe/:id',
+      name: 'PaymentDetail',
+      component: PaymentDetailView,
     },
   ],
 })
