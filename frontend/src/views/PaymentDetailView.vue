@@ -10,11 +10,9 @@
       </p>
     </header>
 
-    <!-- Mensagens de loading ou erro -->
     <div v-if="loading" class="loading">Carregando detalhes do pagamento...</div>
     <div v-if="error" class="error">{{ error }}</div>
 
-    <!-- Se os dados foram carregados com sucesso -->
     <div v-if="payment && !loading && !error" class="payment-card">
       <div class="price-section">
         <p class="valor-original">
@@ -29,7 +27,6 @@
         <p>Pagamento via <span class="tipo">{{ payment.tipo_pagamento }}</span></p>
       </div>
 
-      <!-- Se for PIX, exibe a seção PIX -->
       <div v-if="payment.tipo_pagamento === 'PIX'" class="pix-section">
         <p class="pix-info">
           Escaneie o QR Code ou copie o código para pagar:
@@ -40,18 +37,14 @@
           alt="QR Code"
           class="qr-code-img"
         />
-        <button class="btn-copy" @click="copiarQRCode">
+        <button class="btn-action" @click="copiarQRCode">
           Copiar Código Pix
         </button>
       </div>
 
-      <!-- Se for Boleto, exibe a nova seção editada -->
       <div v-else-if="payment.tipo_pagamento === 'Boleto'" class="boleto-section">
-        <!-- “Linha Digitável” simulada ou obtida do back -->
         <div class="linha-digitavel">
-          <!-- Se você tiver o valor real no backend, exiba com {{ boletoCode }} -->
-          <p>{{ boletoCode || "12345.67891 12345.123456" }}</p>
-          <p>{{ boletoCode ? boletoCode : "12345.123456 1234567891234" }}</p>
+          <p>{{ boletoCode.content }}</p>
         </div>
 
         <div class="button-group">
@@ -87,7 +80,6 @@ export default {
     },
   },
   methods: {
-    // Busca os dados do pagamento ao montar o componente
     async fetchPayment() {
       this.loading = true;
       this.error = null;
@@ -96,14 +88,9 @@ export default {
         const response = await axios.get(`http://localhost:8000/api/pagamentos/${id}`);
         this.payment = response.data;
 
-        // Exemplo: extrair dados de metadados
         const meta = this.payment.metadados || {};
 
-        // Se PIX, extrair base64 do QR Code
         this.qrCodeBase64 = meta.point_of_interaction?.transaction_data?.qr_code_base64 || null;
-
-        // Se Boleto, extrair a “linha digitável” ou outro campo
-        // Aqui, supomos que viria em meta.barcode ou algo similar
         this.boletoCode = meta.barcode || null;
       } catch (err) {
         this.error = "Não foi possível carregar os detalhes do pagamento.";
@@ -119,13 +106,11 @@ export default {
       }
     },
     copiarCodigoBoleto() {
-      // Se você tiver a linha digitável real em `boletoCode`, copie-a
-      const codigo = this.boletoCode || "12345.67891 12345.123456 12345.123456 1234567891234";
+      const codigo = this.boletoCode.content || "12345.67891 12345.123456 12345.123456 1234567891234";
       navigator.clipboard.writeText(codigo);
       alert("Código de barras copiado!");
     },
     baixarBoleto() {
-      // Se o backend retorna link_pagamento com a URL do boleto, abra em nova aba
       if (this.payment.link_pagamento) {
         window.open(this.payment.link_pagamento, "_blank");
       } else {
@@ -144,131 +129,179 @@ export default {
   max-width: 420px;
   margin: 2rem auto;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #fff5ff, #fce4ff);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   font-family: "Poppins", sans-serif;
-  color: #572364;
-  text-align: center;
+  color: #333333;
 }
 
 .header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.logos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
-.success-title {
-  font-size: 1.3rem;
-  margin-bottom: 0.5rem;
-}
-
-.emoji {
-  font-size: 1.2rem;
-}
-
-.alert {
-  font-size: 0.9rem;
-  margin: 0.5rem 0;
-  color: #009045;
-}
-
-.loading,
-.error {
-  font-size: 1rem;
-  margin: 1rem 0;
-  color: #f00;
-}
-
-.payment-card {
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1.2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
 .price-section {
-  margin-bottom: 1rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
 }
 
 .valor-original {
-  font-size: 0.9rem;
-  text-decoration: line-through;
-  color: #999;
-  margin-bottom: 0.3rem;
-}
-
-.desconto {
-  color: #ff2d55;
-  font-weight: bold;
-  margin-left: 0.4rem;
-}
-
-.valor-final {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
-}
-
-.tipo-pagamento {
-  margin-bottom: 1rem;
-}
-
-.tipo {
-  color: #009045;
-  font-weight: 600;
-}
-
-.pix-section,
-.boleto-section {
-  margin-top: 1rem;
-}
-
-.pix-info,
-.boleto-info {
-  font-size: 0.95rem;
-  margin-bottom: 0.6rem;
-}
-
-.qr-code-img {
-  width: 160px;
-  height: 160px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  margin-bottom: 0.8rem;
-}
-
-.linha-digitavel {
-  background-color: #fff;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  padding: 0.8rem;
-  font-size: 0.95rem;
-  color: #444;
-  margin-bottom: 1rem;
-}
-
-.button-group,
-.boleto-buttons {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 0.5rem;
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
   gap: 0.5rem;
 }
 
-.btn-copy,
-.btn-action {
-  background-color: #572364;
-  color: #ffffff;
+.desconto {
+  background: #FFE8EC;
+  color: #FF2D55;
   font-weight: 600;
-  border: none;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  padding: 0.65rem 1rem;
-  cursor: pointer;
-  font-family: "Poppins", sans-serif;
-  width: 100%;
-  transition: background-color 0.3s ease;
+  font-size: 0.9rem;
 }
-.btn-copy:hover,
+
+.valor-final {
+  color: #9B2AAF;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.valor-final strong {
+  font-size: 1.8rem;
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.tipo-pagamento {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #F0FFF4;
+  color: #009045;
+  padding: 0.5rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.linha-digitavel {
+  background: #F8F9FA;
+  border: 1px solid #E9ECEF;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  color: #495057;
+  word-break: break-all;
+  text-align: center;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+.btn-action {
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action:first-child {
+  background: #F8F9FA;
+  color: #9B2AAF;
+  border: 2px solid #9B2AAF;
+}
+
+.btn-action:last-child {
+  background: #9B2AAF;
+  color: white;
+}
+
 .btn-action:hover {
-  background-color: #3f1d4b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(155, 42, 175, 0.2);
+}
+
+.social-share {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #E9ECEF;
+}
+
+.social-share a {
+  color: #6C757D;
+  transition: color 0.2s ease;
+}
+
+.social-share a:hover {
+  color: #9B2AAF;
+}
+
+/* QR Code specific styles */
+.qr-code-img {
+  width: 200px;
+  height: 200px;
+  margin: 1.5rem auto;
+  display: block;
+  padding: 1rem;
+  background: white;
+  border: 1px solid #E9ECEF;
+  border-radius: 12px;
+}
+
+.pix-info {
+  text-align: center;
+  color: #495057;
+  font-size: 0.9rem;
+  margin: 1rem 0;
+}
+
+/* Loading and error states */
+.loading,
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: #6C757D;
+}
+
+.error {
+  color: #DC3545;
+}
+
+@media (max-width: 480px) {
+  .payment-detail-container {
+    margin: 1rem;
+    padding: 1rem;
+  }
+
+  .valor-final strong {
+    font-size: 1.5rem;
+  }
 }
 </style>
+
