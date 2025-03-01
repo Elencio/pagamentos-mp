@@ -27,14 +27,14 @@ Este projeto demonstra uma aplicação Fullstack utilizando **FastAPI** (backend
    ```bash
    docker build -t api-pagamentos:latest .
    ```
-```bash  
-docker run -d \
-  --network minha_rede \
-  -p 8000:8000 \
-  -e MERCADO_PAGO_TOKEN="" \
-  -e DATABASE_URL="" \
-  --name api_pagamentos \
-  api-pagamentos:latest
+   ```bash  
+    docker run -d \
+    --network minha_rede \
+    -p 8000:8000 \
+    -e MERCADO_PAGO_TOKEN="MERCADO_PAGO_TOKEN" \
+    -e DATABASE_URL=" DATABASE_URL" \
+    --name api_pagamentos \
+     api-pagamentos:latest
    ```
 
 A API estará disponível em [http://localhost:8000](http://localhost:8000).
