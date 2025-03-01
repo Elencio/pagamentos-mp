@@ -25,13 +25,12 @@ def criar_pagamento(
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
-      
         cliente = models.Cliente(
             id=cliente_id,
             nome="Cliente Teste",
             sobrenome="Zivane",
             email="teste@exemplo.com",
-            cpf_cnpj="12345678901",
+            cpf_cnpj="19119119100",  # para PIX, se necessário
             endereco="Rua Teste, 123"
         )
         db.add(cliente)
@@ -71,9 +70,18 @@ def criar_pagamento(
     if tipo_pagamento.lower() == "boleto":
         body["payer"]["last_name"] = "Zivane"
         body["payer"]["identification"] = {
-            "type": "CPF",
-            "number": cliente.cpf_cnpj
+            "type": "CPF", 
+            "number": "19119119100"  
         }
+        body["payer"]["address"] = {
+            "zip_code": "88000000",
+            "street_name": "Rua da Abobrinha",
+            "street_number": "3039",
+            "neighborhood": "Parque Patricios",
+            "city": "Buenos Aires",
+            "federal_unit": "BA"
+        }
+    print("Payload para boleto:", body)
     
     url = "https://api.mercadopago.com/v1/payments"
     

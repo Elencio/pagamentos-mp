@@ -14,7 +14,7 @@
     <div v-if="loading" class="loading">Carregando detalhes do pagamento...</div>
     <div v-if="error" class="error">{{ error }}</div>
 
-    <!-- Conteúdo do pagamento -->
+    <!-- Se os dados foram carregados com sucesso -->
     <div v-if="payment && !loading && !error" class="payment-card">
       <div class="price-section">
         <p class="valor-original">
@@ -29,7 +29,7 @@
         <p>Pagamento via <span class="tipo">{{ payment.tipo_pagamento }}</span></p>
       </div>
 
-      <!-- Se for PIX, exibe o QR code -->
+      <!-- Se for PIX, exibe a seção PIX -->
       <div v-if="payment.tipo_pagamento === 'PIX'" class="pix-section">
         <p class="pix-info">
           Escaneie o QR Code ou copie o código para pagar:
@@ -45,14 +45,23 @@
         </button>
       </div>
 
-      <!-- Se for Boleto, exibe o código de barras -->
+      <!-- Se for Boleto, exibe a nova seção editada -->
       <div v-else-if="payment.tipo_pagamento === 'Boleto'" class="boleto-section">
-        <p class="boleto-info">
-          Código de barras: <strong>{{ boletoCode }}</strong>
-        </p>
-        <button class="btn-copy" @click="copiarCodigoBoleto">
-          Copiar Código de Barras
-        </button>
+        <!-- “Linha Digitável” simulada ou obtida do back -->
+        <div class="linha-digitavel">
+          <!-- Se você tiver o valor real no backend, exiba com {{ boletoCode }} -->
+          <p>{{ boletoCode || "12345.67891 12345.123456" }}</p>
+          <p>{{ boletoCode ? boletoCode : "12345.123456 1234567891234" }}</p>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-action" @click="copiarCodigoBoleto">
+            COPIAR CÓDIGO
+          </button>
+          <button class="btn-action" @click="baixarBoleto">
+            BAIXAR BOLETO
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -78,6 +87,7 @@ export default {
     },
   },
   methods: {
+    // Busca os dados do pagamento ao montar o componente
     async fetchPayment() {
       this.loading = true;
       this.error = null;
@@ -85,9 +95,15 @@ export default {
       try {
         const response = await axios.get(`http://localhost:8000/api/pagamentos/${id}`);
         this.payment = response.data;
+
+        // Exemplo: extrair dados de metadados
         const meta = this.payment.metadados || {};
 
+        // Se PIX, extrair base64 do QR Code
         this.qrCodeBase64 = meta.point_of_interaction?.transaction_data?.qr_code_base64 || null;
+
+        // Se Boleto, extrair a “linha digitável” ou outro campo
+        // Aqui, supomos que viria em meta.barcode ou algo similar
         this.boletoCode = meta.barcode || null;
       } catch (err) {
         this.error = "Não foi possível carregar os detalhes do pagamento.";
@@ -103,9 +119,17 @@ export default {
       }
     },
     copiarCodigoBoleto() {
-      if (this.boletoCode) {
-        navigator.clipboard.writeText(this.boletoCode);
-        alert("Código de barras copiado!");
+      // Se você tiver a linha digitável real em `boletoCode`, copie-a
+      const codigo = this.boletoCode || "12345.67891 12345.123456 12345.123456 1234567891234";
+      navigator.clipboard.writeText(codigo);
+      alert("Código de barras copiado!");
+    },
+    baixarBoleto() {
+      // Se o backend retorna link_pagamento com a URL do boleto, abra em nova aba
+      if (this.payment.link_pagamento) {
+        window.open(this.payment.link_pagamento, "_blank");
+      } else {
+        alert("Link do boleto não disponível.");
       }
     },
   },
@@ -144,10 +168,11 @@ export default {
 .alert {
   font-size: 0.9rem;
   margin: 0.5rem 0;
-  color: #009045; /* Verde para destaque */
+  color: #009045;
 }
 
-.loading, .error {
+.loading,
+.error {
   font-size: 1rem;
   margin: 1rem 0;
   color: #f00;
@@ -193,17 +218,13 @@ export default {
   font-weight: 600;
 }
 
-.pix-section, .boleto-section {
+.pix-section,
+.boleto-section {
   margin-top: 1rem;
 }
 
-.pix-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.pix-info, .boleto-info {
+.pix-info,
+.boleto-info {
   font-size: 0.95rem;
   margin-bottom: 0.6rem;
 }
@@ -216,19 +237,38 @@ export default {
   margin-bottom: 0.8rem;
 }
 
-.btn-copy {
+.linha-digitavel {
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 0.8rem;
+  font-size: 0.95rem;
+  color: #444;
+  margin-bottom: 1rem;
+}
+
+.button-group,
+.boleto-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.btn-copy,
+.btn-action {
   background-color: #572364;
-  width: 100%;
   color: #ffffff;
   font-weight: 600;
   border: none;
   border-radius: 4px;
   padding: 0.65rem 1rem;
   cursor: pointer;
-  transition: background-color 0.3s ease;
   font-family: "Poppins", sans-serif;
+  width: 100%;
+  transition: background-color 0.3s ease;
 }
-.btn-copy:hover {
+.btn-copy:hover,
+.btn-action:hover {
   background-color: #3f1d4b;
 }
 </style>

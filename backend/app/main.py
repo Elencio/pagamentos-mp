@@ -1,8 +1,10 @@
 import os
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine, SessionLocal
 from . import models
+from .routers import pagamento
 
 
 Base.metadata.create_all(bind=engine)
