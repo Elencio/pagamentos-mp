@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from .. import models
-from ..config import MERCADO_PAGO_TOKEN
+from ..config import MERCADO_PAGO_TOKEN, MERCADO_PAGO_URL
 
 router = APIRouter()
 
@@ -30,7 +30,7 @@ def criar_pagamento(
             nome="Cliente Teste",
             sobrenome="Zivane",
             email="teste@exemplo.com",
-            cpf_cnpj="19119119100",  # para PIX, se necessário
+            cpf_cnpj="19119119100",  
             endereco="Rua Teste, 123"
         )
         db.add(cliente)
@@ -81,11 +81,8 @@ def criar_pagamento(
             "city": "Buenos Aires",
             "federal_unit": "BA"
         }
-    print("Payload para boleto:", body)
     
-    url = "https://api.mercadopago.com/v1/payments"
-    
-    response = requests.post(url, json=body, headers=headers)
+    response = requests.post(MERCADO_PAGO_URL, json=body, headers=headers)
     if response.status_code not in [200, 201]:
         novo_pagamento.status = "falhou"
         db.commit()
