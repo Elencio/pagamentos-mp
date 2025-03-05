@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import Base, engine, SessionLocal
+from .database import Base, engine
 from .routers import pagamento
 from .seed import run_seed
 
