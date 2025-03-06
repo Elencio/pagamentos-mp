@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine
-from .routers import pagamento
+from .routers import pagamento, webhook
 from .seed import run_seed
 
 
@@ -21,6 +21,7 @@ app.add_middleware(
 )
 
 app.include_router(pagamento.router, prefix="/api", tags=["pagamentos"])
+app.include_router(webhook.router, prefix="/api", tags=["webhook"])
 
 @app.get("/")
 def root():

@@ -72,7 +72,7 @@ export default {
     getStatusClass(status) {
       switch (status.toLowerCase()) {
         case 'pago':
-          return 'status-paid';
+          return 'status-approved';
         case 'pendente':
           return 'status-pending';
         default:
