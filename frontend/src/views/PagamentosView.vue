@@ -1,8 +1,16 @@
 <template>
   <div class="payment-list-container">
     <h2>Lista de Pagamentos</h2>
+    <div class="header">
+      <p v-if="user">
+        Você está logado como <strong>{{ user.username }}</strong>
+        <span v-if="user.is_admin">(Administrador)</span>
+        <span v-else>(Usuário)</span>
+      </p>
+      <button class="btn-logout" @click="logout">Logout</button>
+    </div>
 
-    <router-link to="/payment-form" class="btn-new">
+    <router-link to="/new-payment" class="btn-new">
       Novo Pagamento
     </router-link>
 
@@ -22,18 +30,30 @@
           <th>Valor</th>
           <th>Tipo</th>
           <th>Status</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="pay in payments" :key="pay.id">
           <td>{{ pay.id }}</td>
-          <td>{{ pay.cliente_id }}</td>
+          <td>
+            <!-- Se houver relacionamento, mostra nome e sobrenome; caso contrário, exibe o cliente_id -->
+            {{ pay.cliente ? pay.cliente.nome + ' ' + pay.cliente.sobrenome : pay.cliente_id }}
+          </td>
           <td>R$ {{ pay.valor.toFixed(2) }}</td>
           <td>{{ pay.tipo_pagamento?.nome || pay.tipo_pagamento_id }}</td>
           <td>
             <span :class="['status-badge', getStatusClass(pay.status)]">
               {{ pay.status }}
             </span>
+          </td>
+          <td>
+            <!-- Exibe o botão "Quitar" se o status for pendente e se o usuário não for admin -->
+            <button v-if="pay.status.toLowerCase() === 'pendente' && !user.is_admin"
+                    class="btn-quitar"
+                    @click="quitarPagamento(pay.id)">
+              Quitar
+            </button>
           </td>
         </tr>
       </tbody>
@@ -45,7 +65,6 @@
 
 <script>
 import axios from "axios";
-
 export default {
   name: "PaymentList",
   data() {
@@ -53,30 +72,58 @@ export default {
       payments: [],
       loading: true,
       error: null,
+      user: null,
     };
   },
   methods: {
     async fetchPayments() {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          this.error = "Usuário não autenticado.";
+          return;
+        }
+        axios.defaults.headers.common["Authorization"] = "Bearer " + token;
         this.loading = true;
         const response = await axios.get("http://localhost:8000/api/pagamentos");
         this.payments = response.data.pagamentos || [];
+
+        const userResponse = await axios.get("http://localhost:8000/api/auth/me");
+        this.user = userResponse.data;
         this.error = null;
       } catch (error) {
-        console.error("Erro ao buscar pagamentos:", error);
-        this.error = "Não foi possível buscar a lista de pagamentos.";
+        console.error("Erro ao buscar dados:", error);
+        this.error = "Não foi possível buscar os dados.";
       } finally {
         this.loading = false;
       }
     },
     getStatusClass(status) {
       switch (status.toLowerCase()) {
-        case 'pago':
-          return 'status-approved';
-        case 'pendente':
-          return 'status-pending';
+        case "pago":
+          return "status-paid";
+        case "pendente":
+          return "status-pending";
         default:
-          return 'status-other';
+          return "status-other";
+      }
+    },
+    logout() {
+      localStorage.removeItem("token");
+      delete axios.defaults.headers.common["Authorization"];
+      this.$router.push({ name: "Login" });
+    },
+    async quitarPagamento(pagamentoId) {
+      // Aqui você implementa a lógica de quitação do pagamento.
+      // Por exemplo, pode enviar uma requisição para atualizar o status do pagamento para "pago".
+      try {
+        // Exemplo: endpoint de quitação (você precisa criar essa rota no backend)
+        const response = await axios.post(`http://localhost:8000/api/pagamentos/${pagamentoId}/quitar`);
+        // Após a quitação, atualize a lista de pagamentos.
+        this.fetchPayments();
+      } catch (error) {
+        console.error("Erro ao quitar pagamento:", error);
+        alert("Não foi possível quitar o pagamento.");
       }
     },
   },
@@ -95,115 +142,87 @@ export default {
   padding: 2rem;
 }
 
-h2 {
-  color: #572364;
-  font-size: 1.8rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.btn-logout {
+  background-color: #d9534f;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: "Poppins", sans-serif;
+  transition: background-color 0.3s;
+}
+
+.btn-logout:hover {
+  background-color: #c9302c;
 }
 
 .btn-new {
   display: inline-block;
   background-color: #572364;
   color: #fff;
-  border: none;
   padding: 0.8rem 1.2rem;
   border-radius: 4px;
-  cursor: pointer;
-  margin-bottom: 1.5rem;
-  font-family: "Poppins", sans-serif;
   text-decoration: none;
-  transition: background-color 0.3s ease;
-}
-
-.btn-new:hover {
-  background-color: #3f1d4b;
+  margin-bottom: 1.5rem;
 }
 
 .payments-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  overflow: hidden;
+  border-collapse: collapse;
 }
 
 .payments-table th,
 .payments-table td {
-  padding: 1rem;
+  padding: 0.8rem;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.payments-table th {
-  background-color: #fce4ff;
-  color: #572364;
-  font-weight: 600;
-}
-
-.payments-table tr:last-child td {
-  border-bottom: none;
-}
-
-.payments-table tr:nth-child(even) {
-  background-color: #f9f2fc;
-}
-
-.payments-table tr:hover {
-  background-color: #f0e0f5;
+  border-bottom: 1px solid #ccc;
 }
 
 .status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  color: #fff;
 }
 
 .status-paid {
-  background-color: #d1fae5;
-  color: #065f46;
+  background-color: #5cb85c;
 }
 
 .status-pending {
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: #f0ad4e;
 }
 
 .status-other {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: #999;
 }
 
-.loading, .error-message, .no-payments {
+.btn-quitar {
+  background-color: #0275d8;
+  color: #fff;
+  border: none;
+  font-family: "Poppins", sans-serif;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-quitar:hover {
+  background-color: #025aa5;
+}
+
+.loading,
+.error-message,
+.no-payments {
   text-align: center;
   padding: 2rem;
-  background-color: #f9f2fc;
-  border-radius: 4px;
-  color: #572364;
-}
-
-.error-message {
-  color: #991b1b;
-  background-color: #fee2e2;
-}
-
-@media (max-width: 768px) {
-  .payment-list-container {
-    padding: 1rem;
-  }
-
-  .payments-table th,
-  .payments-table td {
-    padding: 0.75rem 0.5rem;
-  }
-
-  .btn-new {
-    width: 100%;
-    text-align: center;
-  }
 }
 </style>
-
