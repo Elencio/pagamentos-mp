@@ -1,3 +1,4 @@
+# Modified payment router with authentication
 import os
 import requests
 import uuid 
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from .. import models
 from ..config import MERCADO_PAGO_TOKEN, MERCADO_PAGO_URL
+from ..auth import get_current_active_user
 
 router = APIRouter()
 
@@ -21,7 +23,8 @@ def criar_pagamento(
     cliente_id: int,
     valor: float,
     tipo_pagamento: str,  
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)  
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -45,7 +48,8 @@ def criar_pagamento(
         cliente_id=cliente_id,
         valor=valor,
         tipo_pagamento_id=tipo_reg.id,
-        status="pendente"
+        status="pendente",
+        user_id=current_user.id  # Track which user created the payment
     )
     db.add(novo_pagamento)
     db.commit()
@@ -105,15 +109,30 @@ def criar_pagamento(
     }
 
 @router.get("/pagamentos")
-def listar_pagamentos(db: Session = Depends(get_db)):
-    pagamentos = db.query(models.Pagamento).all()
+def listar_pagamentos(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)  # Added authentication
+):
+    # If admin, show all payments, otherwise just the user's payments
+    if current_user.is_admin:
+        pagamentos = db.query(models.Pagamento).all()
+    else:
+        pagamentos = db.query(models.Pagamento).filter(models.Pagamento.user_id == current_user.id).all()
     return {"pagamentos": pagamentos}
 
 @router.get("/pagamentos/{pagamento_id}")
-def obter_pagamento(pagamento_id: int, db: Session = Depends(get_db)):
+def obter_pagamento(
+    pagamento_id: int, 
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)  # Added authentication
+):
     pagamento = db.query(models.Pagamento).filter(models.Pagamento.id == pagamento_id).first()
     if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento não encontrado.")
+    
+    # Check if user has access to this payment
+    if not current_user.is_admin and pagamento.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado a este pagamento.")
     
     tipo_nome = None
     if pagamento.tipo_pagamento:

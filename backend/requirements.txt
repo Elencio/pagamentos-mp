@@ -5,3 +5,9 @@ requests
 python-dotenv
 psycopg2
 alembic
+PyJWT>=2.0.0
+python-multipart
+python-jose
+bcrypt
+passlib
+
