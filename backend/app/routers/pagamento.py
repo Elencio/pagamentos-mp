@@ -2,9 +2,10 @@
 import os
 import requests
 import uuid 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ..database import SessionLocal
+from pydantic import BaseModel
 from .. import models
 from ..config import MERCADO_PAGO_TOKEN, MERCADO_PAGO_URL
 from ..auth import get_current_active_user
@@ -17,6 +18,9 @@ def get_db():
         yield db
     finally:
         db.close()
+
+class PaymentUpdateRequest(BaseModel):
+    transaction_amount: float
 
 @router.post("/pagamentos")
 def criar_pagamento(
@@ -111,9 +115,8 @@ def criar_pagamento(
 @router.get("/pagamentos")
 def listar_pagamentos(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_active_user)  # Added authentication
+    current_user = Depends(get_current_active_user) 
 ):
-    # If admin, show all payments, otherwise just the user's payments
     if current_user.is_admin:
         pagamentos = db.query(models.Pagamento).all()
     else:
@@ -146,4 +149,59 @@ def obter_pagamento(
         "status": pagamento.status,
         "link_pagamento": pagamento.link_pagamento,
         "metadados": pagamento.metadados,
+    }
+
+
+@router.put("/pagamentos/{pagamento_id}/quitar")
+def atualizar_status_pagamento(
+    pagamento_id: int,
+    approval_data: PaymentUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    pagamento = db.query(models.Pagamento).filter(models.Pagamento.id == pagamento_id).first()
+    if not pagamento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pagamento não encontrado.")
+    
+    if pagamento.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o usuário que criou o pagamento pode atualizá-lo.")
+    
+    new_status = "approved"
+    
+    url = f"{MERCADO_PAGO_URL}/{pagamento_id}"
+    
+    headers = {
+        "Authorization": f"Bearer {MERCADO_PAGO_TOKEN}",
+        "Content-Type": "application/json",
+        "x-idempotency-key": str(uuid.uuid4())
+    }
+    
+    body = {
+        "status": new_status,
+        "transaction_amount": approval_data.transaction_amount
+    }
+    
+    response = requests.put(url, json=body, headers=headers)
+    
+    if response.status_code not in [200, 201]:
+        pagamento.status = "falhou"
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Erro ao atualizar pagamento no Mercado Pago: {response.text}"
+        )
+    
+
+    pagamento.status = new_status
+    db.commit()
+    db.refresh(pagamento)
+    
+    return {
+        "message": "Pagamento atualizado para approved com sucesso.",
+        "pagamento": {
+            "id": pagamento.id,
+            "status": pagamento.status,
+            "link_pagamento": pagamento.link_pagamento,
+            "metadados": pagamento.metadados,
+        }
     }

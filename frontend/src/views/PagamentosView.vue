@@ -37,7 +37,6 @@
         <tr v-for="pay in payments" :key="pay.id">
           <td>{{ pay.id }}</td>
           <td>
-            <!-- Se houver relacionamento, mostra nome e sobrenome; caso contrário, exibe o cliente_id -->
             {{ pay.cliente ? pay.cliente.nome + ' ' + pay.cliente.sobrenome : pay.cliente_id }}
           </td>
           <td>R$ {{ pay.valor.toFixed(2) }}</td>
@@ -48,7 +47,6 @@
             </span>
           </td>
           <td>
-            <!-- Exibe o botão "Quitar" se o status for pendente e se o usuário não for admin -->
             <button v-if="pay.status.toLowerCase() === 'pendente' && !user.is_admin"
                     class="btn-quitar"
                     @click="quitarPagamento(pay.id)">
@@ -114,18 +112,25 @@ export default {
       this.$router.push({ name: "Login" });
     },
     async quitarPagamento(pagamentoId) {
-      // Aqui você implementa a lógica de quitação do pagamento.
-      // Por exemplo, pode enviar uma requisição para atualizar o status do pagamento para "pago".
-      try {
-        // Exemplo: endpoint de quitação (você precisa criar essa rota no backend)
-        const response = await axios.post(`http://localhost:8000/api/pagamentos/${pagamentoId}/quitar`);
-        // Após a quitação, atualize a lista de pagamentos.
-        this.fetchPayments();
-      } catch (error) {
-        console.error("Erro ao quitar pagamento:", error);
-        alert("Não foi possível quitar o pagamento.");
-      }
-    },
+  try {
+
+    const payment = this.payments.find(p => p.id === pagamentoId);
+    if (!payment) {
+      alert("Pagamento não encontrado.");
+      return;
+    }
+
+    const payload = {
+      transaction_amount: payment.valor
+    };
+    const response = await axios.put(`http://localhost:8000/api/pagamentos/${pagamentoId}/quitar`, payload);
+    this.fetchPayments();
+  } catch (error) {
+    console.error("Erro ao quitar pagamento:", error);
+    alert("Não foi possível quitar o pagamento.");
+  }
+},
+
   },
   mounted() {
     this.fetchPayments();
